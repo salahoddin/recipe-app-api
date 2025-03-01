@@ -96,4 +96,43 @@ class RecipeDetailSerializer(RecipeSerializer):
     """Serializer for recipe detail."""
 
     class Meta(RecipeSerializer.Meta):
-        fields = RecipeSerializer.Meta.fields + ['description']
+        fields = RecipeSerializer.Meta.fields + ['description', 'image']
+
+
+class RecipeImageSerializer(serializers.ModelSerializer):
+    """Serializer for uploading images to recipes."""
+
+    class Meta:
+        model = Recipe
+        fields = ['id', 'image']
+        read_only_fields = ['id']
+        extra_kwargs = {'image': {'required': True}}
+
+    # def update(self, instance, validated_data):
+    #     """Update and return a recipe."""
+    #     recipe = super().update(instance, validated_data)
+    #     if recipe.image:
+    #         recipe.image.delete()
+    #     return recipe
+    def update(self, instance, validated_data):
+        """Update and return a recipe."""
+        old_image = instance.image  # save old image reference
+
+        if 'image' in validated_data:
+            # assign image before saving
+            instance.image = validated_data['image']
+
+        # django will save the new image
+        recipe = super().update(instance, validated_data)
+
+        # delete old image only if a new one was uploaded
+        if old_image and 'image' in validated_data:
+            old_image.delete(save=False)
+
+        return recipe
+
+    def validate_image(self, value):
+        """Validate and return an image."""
+        if not value:
+            raise serializers.ValidationError('This field is required')
+        return value
